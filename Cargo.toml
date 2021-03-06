@@ -1,5 +1,5 @@
 [package]
-name = "wasm-server"
+name = "syserve"
 version = "0.1.0"
 authors = ["vrishk <krishnavrishab@gmail.com>"]
 edition = "2018"
