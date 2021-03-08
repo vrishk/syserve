@@ -1,5 +1,4 @@
-use actix_files::NamedFile;
-use actix_web::{get, middleware, web, App, Error, HttpResponse, HttpServer};
+use actix_web::{middleware, App, HttpServer};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
