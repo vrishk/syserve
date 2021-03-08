@@ -2,12 +2,15 @@
 name = "syserve"
 version = "0.1.0"
 authors = ["vrishk <krishnavrishab@gmail.com>"]
+description = "Simple actix-web server for yew and yew-router apps"
+repository = "https://github.com/vrishk/syserve/"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT OR Apache-2.0"
+keywords = ["yew", "yew-router", "actix-web", "server"]
+categories = ["web-programming::http-server"]
+readme = "./README.md"
 
 [dependencies]
 actix-web = "3.3.2"
 actix-files = "0.5.0"
 env_logger = "0.8.3"
-clap = "2.33.3"
