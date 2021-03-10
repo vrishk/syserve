@@ -1,4 +1,5 @@
 use actix_web::{middleware, App, HttpServer};
+use argparse::{ArgumentParser, Store};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -6,10 +7,22 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     // Constants
-    const ADDR: (&str, u16) = ("0.0.0.0", 8000);
+    let addr: (&str, u16) = ("0.0.0.0", 8000);
+    let mut dir = String::from(".");
 
-    let args: Vec<String> = std::env::args().collect();
-    let dir = args[1].clone();
+    {
+        let mut parser = ArgumentParser::new();
+        parser.set_description("Server for yew and yew-router apps");
+
+        parser.refer(&mut dir).add_option(
+            &["-d", "--dir"],
+            Store,
+            "Directory to serve containing index.html",
+        );
+        parser.parse_args_or_exit();
+    }
+
+    println!("{:?}", dir);
 
     HttpServer::new(move || {
         App::new()
@@ -20,7 +33,7 @@ async fn main() -> std::io::Result<()> {
                 format!("{}/{}", dir, "index.html"),
             ))
     })
-    .bind(ADDR)?
+    .bind(addr)?
     .workers(1)
     .run()
     .await
