@@ -1,6 +1,6 @@
 # SYserve
 
-[![Crates.io](https://img.shields.io/crates/v/index-map.svg)](https://crates.io/crates/syserve)
+[![Crates.io](https://img.shields.io/crates/v/syserve.svg)](https://crates.io/crates/syserve)
 [![Crates.io](https://img.shields.io/crates/l/syserve.svg)](./LICENSE)
 
 **S**imple **Y**ew **Serve**r made with [`warp`](https://github.com/seanmonstar/warp).
