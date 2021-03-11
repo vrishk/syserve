@@ -3,9 +3,9 @@
 [![Crates.io](https://img.shields.io/crates/v/index-map.svg)](https://crates.io/crates/syserve)
 [![Crates.io](https://img.shields.io/crates/l/syserve.svg)](./LICENSE)
 
-**S**imple **Y**ew **Serve**r made with [`actix_web`](https://actix.rs/).
+**S**imple **Y**ew **Serve**r made with [`warp`](https://github.com/seanmonstar/warp).
 
-Implemented from the [actix example server in the yew-router repo](https://github.com/yewstack/yew_router/tree/master/examples/servers)
+Implemented from the [warp example server in the yew-router repo](https://github.com/yewstack/yew_router/tree/master/examples/servers)
 with a few changes.
 
 ## Usage

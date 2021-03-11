@@ -2,7 +2,7 @@
 name = "syserve"
 version = "0.1.0"
 authors = ["vrishk <krishnavrishab@gmail.com>"]
-description = "Simple actix-web server for yew and yew-router apps"
+description = "Simple server for yew and yew-router apps"
 repository = "https://github.com/vrishk/syserve/"
 edition = "2018"
 license = "MIT OR Apache-2.0"
