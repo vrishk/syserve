@@ -1,7 +1,7 @@
-use syserve::{server, Args};
+use syserve::cli::Args;
+use syserve::server::serve;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let mut args = Args::new();
 
     if let Err(s) = args.parse() {
@@ -9,5 +9,5 @@ async fn main() {
         std::process::exit(1);
     }
 
-    server(args).await;
+    serve(args);
 }
