@@ -11,6 +11,7 @@ use httparse::Request;
 use threadpool::ThreadPool;
 
 use crate::cli;
+use crate::utils;
 
 struct Config {
     dir: PathBuf,
@@ -24,6 +25,14 @@ impl Config {
             index: args.index,
         }
     }
+}
+
+enum RequestState {
+    NotProcessed,
+    ParseError,
+    BadRequest,
+    FileNotFound,
+    FileFound,
 }
 
 pub fn serve(args: cli::Args) {
@@ -49,6 +58,9 @@ pub fn serve(args: cli::Args) {
 }
 
 fn handle_connection(mut stream: TcpStream, config: Arc<Config>) {
+    // Store state/stage of request processing
+    let mut state = RequestState::NotProcessed;
+
     // Reading stream
     let mut buf = [0; 1024];
     stream.read(&mut buf).unwrap();
@@ -58,37 +70,55 @@ fn handle_connection(mut stream: TcpStream, config: Arc<Config>) {
     let mut req = Request::new(&mut headers);
     if let Err(e) = req.parse(&buf) {
         println!("Error parsing request: {}", e);
-        return;
+        state = RequestState::ParseError;
     }
 
-    // Read file if exists
-    let response = match req.path {
-        Some("/") => {
-            format!(
-                "HTTP/1.1 200 OK\r\n\r\n{}",
-                fs::read_to_string(config.dir.join(&config.index)).unwrap()
+    // Incomplete Request
+    if let None = req.path {
+        println!("Bad Request");
+        state = RequestState::BadRequest;
+    }
+
+    // Preprocess path and obtain file path
+    let url_path = req.path.unwrap().replace("../", "").replace("%20", " ");
+    let file_path: PathBuf = match url_path.as_str() {
+        "/" => config.dir.join(&config.index),
+        s => config.dir.join(&s[1..]),
+    };
+
+    println!("Requesting {:?}", file_path);
+
+    // Check if path exists
+    if !file_path.exists() {
+        println!("File not found");
+        state = RequestState::FileNotFound;
+    } else {
+        state = RequestState::FileFound;
+    }
+
+    let response = match state {
+        RequestState::ParseError | RequestState::NotProcessed => {
+            b"HTTP/1.1 500 INTERNAL SERVER ERROR\r\n\r\n".to_vec()
+        }
+        RequestState::BadRequest => b"HTTP/1.1 400 BAD REQUEST\r\n\r\n".to_vec(),
+        RequestState::FileNotFound => b"HTTP/1.1 404 NOT FOUND\r\n\r\n".to_vec(),
+        RequestState::FileFound => {
+            let mut contents = fs::read(&file_path).unwrap();
+            let contents_len = contents.len();
+            let contents_type =
+                utils::extension_to_mime(file_path.extension().and_then(std::ffi::OsStr::to_str));
+            let mut bytes: Vec<u8> = format!(
+                "HTTP/1.1 200 OK\r\nContent-type: {}\r\nContent-Length: {}\r\n\r\n",
+                contents_type, contents_len
             )
-        }
-        Some(s) => {
-            let path = config.dir.join(&s[1..]);
-            println!("Requesting {:?}", path);
-            if path.exists() {
-                format!(
-                    "HTTP/1.1 200 OK\r\n\r\n{}",
-                    fs::read_to_string(path).unwrap()
-                )
-            } else {
-                String::from("HTTP/1.1 404 NOT FOUND\r\n\r\n")
-            }
-        }
-        None => {
-            println!("Bad Request.",);
-            String::from("HTTP/1.1 400 BAD REQUEST\r\n\r\n")
+            .as_bytes()
+            .to_vec();
+            bytes.append(&mut contents);
+
+            bytes
         }
     };
 
-    println!("{}", response);
-
-    stream.write(response.as_bytes()).unwrap();
+    stream.write(&response).unwrap();
     stream.flush().unwrap();
 }
