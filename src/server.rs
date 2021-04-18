@@ -4,10 +4,12 @@ use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+extern crate env_logger;
 extern crate httparse;
 extern crate threadpool;
 
 use httparse::Request;
+use log::{error, info, warn};
 use threadpool::ThreadPool;
 
 use crate::cli;
@@ -39,7 +41,7 @@ pub fn serve(args: cli::Args) {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool = ThreadPool::new(10);
 
-    println!(
+    info!(
         "Serving files at {} with {} workers",
         "127.0.0.1:7878",
         pool.max_count()
@@ -69,13 +71,13 @@ fn handle_connection(mut stream: TcpStream, config: Arc<Config>) {
     let mut headers = [httparse::EMPTY_HEADER; 16];
     let mut req = Request::new(&mut headers);
     if let Err(e) = req.parse(&buf) {
-        println!("Error parsing request: {}", e);
+        error!("Error parsing request: {}", e);
         state = RequestState::ParseError;
     }
 
     // Incomplete Request
     if let None = req.path {
-        println!("Bad Request");
+        warn!("Bad Request");
         state = RequestState::BadRequest;
     }
 
@@ -86,11 +88,11 @@ fn handle_connection(mut stream: TcpStream, config: Arc<Config>) {
         s => config.dir.join(&s[1..]),
     };
 
-    println!("Requesting {:?}", file_path);
+    info!("Requesting {:?}", file_path);
 
     // Check if path exists
     if !file_path.exists() {
-        println!("File not found");
+        warn!("File not found");
         state = RequestState::FileNotFound;
     } else {
         state = RequestState::FileFound;

@@ -1,7 +1,19 @@
 use syserve::cli::Args;
 use syserve::server::serve;
 
+#[macro_use]
+extern crate log;
+
+use env_logger::Env;
+
 fn main() {
+    let env = Env::default()
+        .filter_or("SYSERVE_LOG_LEVEL", "trace")
+        .write_style_or("SYSERVE_LOG_STYLE", "always");
+    env_logger::init_from_env(env);
+
+    info!("Starting server...");
+
     let mut args = Args::new();
 
     if let Err(s) = args.parse() {
