@@ -18,6 +18,8 @@ use crate::utils;
 struct Config {
     dir: PathBuf,
     index: String,
+    not_found: Option<String>,
+    uri: String,
 }
 
 impl Config {
@@ -25,6 +27,8 @@ impl Config {
         Config {
             dir: args.dir,
             index: args.index,
+            not_found: args.not_found,
+            uri: format!("{}:{}", args.addr, args.port),
         }
     }
 }
@@ -34,26 +38,26 @@ enum RequestState {
     ParseError,
     BadRequest,
     FileNotFound,
-    FileFound,
+    FileFound(PathBuf),
 }
 
 pub fn serve(args: cli::Args) {
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let config = Arc::new(Config::new(args));
+
+    let listener = TcpListener::bind(&config.uri).unwrap();
     let pool = ThreadPool::new(10);
 
     info!(
         "Serving files at {} with {} workers",
-        "127.0.0.1:7878",
+        config.uri,
         pool.max_count()
     );
 
-    let state = Arc::new(Config::new(args));
-
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        let cloned_state = Arc::clone(&state);
+        let cloned_config = Arc::clone(&config);
 
-        pool.execute(move || handle_connection(stream, cloned_state));
+        pool.execute(move || handle_connection(stream, cloned_config));
     }
 
     pool.join();
@@ -91,11 +95,13 @@ fn handle_connection(mut stream: TcpStream, config: Arc<Config>) {
     info!("Requesting {:?}", file_path);
 
     // Check if path exists
-    if !file_path.exists() {
+    if file_path.exists() {
+        state = RequestState::FileFound(file_path);
+    } else if !config.not_found.is_none() {
+        state = RequestState::FileFound(config.dir.join(config.not_found.as_ref().unwrap()));
+    } else {
         warn!("File not found");
         state = RequestState::FileNotFound;
-    } else {
-        state = RequestState::FileFound;
     }
 
     let response = match state {
@@ -104,11 +110,11 @@ fn handle_connection(mut stream: TcpStream, config: Arc<Config>) {
         }
         RequestState::BadRequest => b"HTTP/1.1 400 BAD REQUEST\r\n\r\n".to_vec(),
         RequestState::FileNotFound => b"HTTP/1.1 404 NOT FOUND\r\n\r\n".to_vec(),
-        RequestState::FileFound => {
-            let mut contents = fs::read(&file_path).unwrap();
+        RequestState::FileFound(path) => {
+            let mut contents = fs::read(&path).unwrap();
             let contents_len = contents.len();
             let contents_type =
-                utils::extension_to_mime(file_path.extension().and_then(std::ffi::OsStr::to_str));
+                utils::extension_to_mime(path.extension().and_then(std::ffi::OsStr::to_str));
             let mut bytes: Vec<u8> = format!(
                 "HTTP/1.1 200 OK\r\nContent-type: {}\r\nContent-Length: {}\r\n\r\n",
                 contents_type, contents_len
