@@ -1,3 +1,5 @@
+//! Command line arguments, parsing, and verification
+
 use argparse::{ArgumentParser, Store, StoreOption};
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -5,11 +7,17 @@ use std::path::PathBuf;
 #[derive(Clone)]
 /// Struct for cli arguments.
 pub struct Args {
+    /// Path of directory to be served.
     pub dir: PathBuf,
+    /// Index file name in `dir`.
     pub index: String,
+    /// 404 file name in `dir`. If `None`, the 404 error message is returned
     pub not_found: Option<String>,
+    /// Address for serving
     pub address: SocketAddr,
+    /// IP for serving
     pub ip: String,
+    /// Port for serving
     pub port: u16,
 }
 
@@ -42,7 +50,7 @@ impl Args {
     /// Verify if the arguments given are valid.
     /// Checks if dir, index, and 404 files (if given) exist
     /// and if the address (port and ip) are valid.
-    fn verify(&mut self) -> Result<(), &'static str> {
+    pub fn verify(&mut self) -> Result<(), &'static str> {
         // Dir check
         if !self.dir.is_dir() {
             return Err("Directory does not exist");

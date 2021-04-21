@@ -1,3 +1,5 @@
+//! Serving files from a directory
+
 use std::fs;
 use std::io::prelude::*;
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -16,19 +18,19 @@ use crate::cli;
 use crate::utils;
 
 /// Basic configuration for server. Derived from `cli::Args`
-struct Config {
-    /// Path to directory to be served.
+pub struct Config {
+    /// Path of directory to be served.
     dir: PathBuf,
     /// Index file name in `dir`.
     index: String,
     /// 404 file name in `dir`. If `None`, the 404 error message is returned
     not_found: Option<String>,
-    /// Address of the form `ip:port`
+    /// Address for serving
     address: SocketAddr,
 }
 
 impl Config {
-    fn new(args: cli::Args) -> Config {
+    pub fn new(args: cli::Args) -> Config {
         Config {
             dir: args.dir,
             index: args.index,
@@ -38,7 +40,8 @@ impl Config {
     }
 }
 
-enum RequestState {
+/// State of a request while being processed
+pub enum RequestState {
     NotProcessed,
     ParseError,
     BadRequest,
@@ -46,7 +49,7 @@ enum RequestState {
     FileFound(PathBuf),
 }
 
-/// Main serve function for the binary. Takes only `cli::Args`
+/// Main serve function for the binary from `cli::Args`
 pub fn serve(args: cli::Args) {
     let config = Arc::new(Config::new(args));
 
@@ -69,7 +72,15 @@ pub fn serve(args: cli::Args) {
     pool.join();
 }
 
-fn handle_connection(mut stream: TcpStream, config: Arc<Config>) {
+/// Handle connection/request. Spawned as part of a thread.
+/// Returns 4 possible responses:
+/// - Internal Server Error (500) if request parsing fails
+/// - Bad Request (400) if the request has no path
+/// - Not Found (404) if the requested path is not found and if `Config::not_found` is `None`
+/// or if the `Config::not_found` file does not exist in `Config::dir`
+/// - Ok (200) if the requested path is found or if the `Config::not_found` file exists in `Config::dir`
+
+pub fn handle_connection(mut stream: TcpStream, config: Arc<Config>) {
     // Store state/stage of request processing
     let mut state = RequestState::NotProcessed;
 

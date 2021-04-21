@@ -12,14 +12,14 @@ fn main() {
         .write_style_or("SYSERVE_LOG_STYLE", "always");
     env_logger::init_from_env(env);
 
-    info!("Starting server...");
-
     let mut args = Args::new();
 
     if let Err(s) = args.parse() {
         eprintln!("Error parsing arguments: {}", s);
         std::process::exit(1);
     }
+
+    info!("Starting server...");
 
     serve(args);
 }
