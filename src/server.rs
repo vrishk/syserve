@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::prelude::*;
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -15,11 +15,16 @@ use threadpool::ThreadPool;
 use crate::cli;
 use crate::utils;
 
+/// Basic configuration for server. Derived from `cli::Args`
 struct Config {
+    /// Path to directory to be served.
     dir: PathBuf,
+    /// Index file name in `dir`.
     index: String,
+    /// 404 file name in `dir`. If `None`, the 404 error message is returned
     not_found: Option<String>,
-    uri: String,
+    /// Address of the form `ip:port`
+    address: SocketAddr,
 }
 
 impl Config {
@@ -28,7 +33,7 @@ impl Config {
             dir: args.dir,
             index: args.index,
             not_found: args.not_found,
-            uri: format!("{}:{}", args.addr, args.port),
+            address: args.address,
         }
     }
 }
@@ -41,15 +46,16 @@ enum RequestState {
     FileFound(PathBuf),
 }
 
+/// Main serve function for the binary. Takes only `cli::Args`
 pub fn serve(args: cli::Args) {
     let config = Arc::new(Config::new(args));
 
-    let listener = TcpListener::bind(&config.uri).unwrap();
+    let listener = TcpListener::bind(&config.address).unwrap();
     let pool = ThreadPool::new(10);
 
     info!(
         "Serving files at {} with {} workers",
-        config.uri,
+        config.address,
         pool.max_count()
     );
 

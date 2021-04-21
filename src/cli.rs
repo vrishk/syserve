@@ -1,51 +1,75 @@
 use argparse::{ArgumentParser, Store, StoreOption};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 #[derive(Clone)]
+/// Struct for cli arguments.
 pub struct Args {
     pub dir: PathBuf,
     pub index: String,
     pub not_found: Option<String>,
-    pub port: u32,
-    pub addr: String,
+    pub address: SocketAddr,
+    pub ip: String,
+    pub port: u16,
 }
 
 impl Args {
+    /// Generate `Args` instance with default values:
+    /// - `dir`: current directory (`./`)
+    /// - `index`: `index.html` in the current directory
+    /// - `not_found`: `None` (404 error is returned)
+    /// - `address`: 127.0.0.1:7878
+    /// - `ip`: 127.0.0.1
+    /// - `port`: 7878
     pub fn new() -> Args {
         Args {
-            dir: PathBuf::from("."),
+            dir: PathBuf::from("./"),
             index: String::from("index.html"),
             not_found: None,
+            address: "127.0.0.1:7878".parse().unwrap(),
+            ip: String::from("127.0.0.1"),
             port: 7878,
-            addr: String::from("localhost"),
         }
     }
 
+    /// Parsing involving storing arguments and verifying them.
+    /// Returns `Err` variant depending on return value of `Args.verify`
     pub fn parse(&mut self) -> Result<(), &str> {
         self.store();
         self.verify()
     }
 
-    fn verify(&self) -> Result<(), &str> {
+    /// Verify if the arguments given are valid.
+    /// Checks if dir, index, and 404 files (if given) exist
+    /// and if the address (port and ip) are valid.
+    fn verify(&mut self) -> Result<(), &'static str> {
         // Dir check
         if !self.dir.is_dir() {
             return Err("Directory does not exist");
         };
         // Index check
         if !self.dir.join(&self.index).is_file() {
-            return Err("Index file does not exist");
+            return Err("Index file does not exist in given directory");
         };
         // 404 check
         if !self.not_found.is_none() && !self.dir.join(self.not_found.as_ref().unwrap()).is_file() {
-            return Err("404 file does not exist");
+            return Err("404 file does not exist in given directory");
         };
+        // Address check
+        let address: String = format!("{}:{}", self.ip, self.port);
+        if address.parse::<SocketAddr>().is_err() {
+            return Err("Invalid IP Address given");
+        } else {
+            self.address = address.parse::<SocketAddr>().unwrap();
+        }
 
         Ok(())
     }
 
-    fn store(&mut self) {
+    /// Store arguments using the `argparse` crate.
+    pub fn store(&mut self) {
         let mut parser = ArgumentParser::new();
-        parser.set_description("Server for yew and yew-router apps");
+        parser.set_description("Minimal server for yew and yew-router apps");
 
         parser.refer(&mut self.dir).add_option(
             &["-d", "--dir"],
@@ -62,7 +86,7 @@ impl Args {
             StoreOption,
             "File to be served in case of 404",
         );
-        parser.refer(&mut self.addr).add_option(
+        parser.refer(&mut self.ip).add_option(
             &["-a", "--addr"],
             Store,
             "Address at which files are served. Default: localhost",
